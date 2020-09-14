@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+  <!-- cross origin resource sharing example -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Document</title>
+  </head>
+  <body>
+    <button id="get">Get Posts</button>
+    <button id="post">Create a Post</button>
+  </body>
+</html>
+
+<script>
+  const getBtn = document.getElementById("get");
+  const postBtn = document.getElementById("post");
+
+  getBtn.addEventListener("click", () => {
+    fetch("http://localhost:8080/feed/posts")
+      .then((reuslt) => reuslt.json())
+      .then((resData) => console.log(resData));
+  });
+
+  postBtn.addEventListener("click", () => {
+    fetch("http://localhost:8080/feed/post", {
+      method: "POST",
+      body: JSON.stringify({
+        title: "Very First Post",
+        content: "This is the first post",
+      }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then((reuslt) => reuslt.json())
+      .then((resData) => console.log(resData));
+  });
+</script>
