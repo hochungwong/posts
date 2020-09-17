@@ -1,8 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
 const path = require("path");
 const multer = require("multer");
+
+const connectToDB = require("./config/db");
 
 const feedRoutes = require("./routes/feed");
 const authRoutes = require("./routes/auth");
@@ -57,8 +58,4 @@ app.use((error, req, res, next) => {
   });
 });
 
-mongoose
-  .connect(
-    "mongodb+srv://carsonwong:zxvy123@carsoncluster-y0mmo.mongodb.net/posts?authSource=admin&replicaSet=CarsonCluster-shard-0&w=majority&readPreference=primary&appname=MongoDB%20Compass&retryWrites=true&ssl=true"
-  )
-  .then((result) => app.listen(8080));
+connectToDB().then(() => app.listen(8080));

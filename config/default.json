@@ -1,0 +1,4 @@
+{
+  "mongoUri": "mongodb+srv://carsonwong:zxvy123@carsoncluster-y0mmo.mongodb.net/posts?authSource=admin&replicaSet=CarsonCluster-shard-0&w=majority&readPreference=primary&appname=MongoDB%20Compass&retryWrites=true&ssl=true",
+  "jwtSecret": "secret"
+}

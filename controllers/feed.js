@@ -9,7 +9,7 @@ const SEVER_ERROR_CODE = 500;
 
 const PER_PAGE_LIMIT = 2;
 
-const catchError = (e) => {
+const catchError = (e, next) => {
   if (!e.statusCode) {
     e.statusCode = SEVER_ERROR_CODE;
   }
@@ -53,7 +53,7 @@ exports.getPosts = (req, res, next) => {
         totalItems,
       });
     })
-    .catch((err) => catchError(err));
+    .catch((err) => catchError(err, next));
 };
 
 exports.getPost = (req, res, next) => {
@@ -68,7 +68,7 @@ exports.getPost = (req, res, next) => {
         post,
       });
     })
-    .catch((err) => catchError(err));
+    .catch((err) => catchError(err, next));
 };
 
 exports.createPost = (req, res, next) => {
@@ -101,7 +101,7 @@ exports.createPost = (req, res, next) => {
       });
     })
     .catch((err) => {
-      catchError(err);
+      catchError(err, next);
     });
 };
 
@@ -143,7 +143,7 @@ exports.updatePost = (req, res, next) => {
       });
     })
     .catch((err) => {
-      catchError(err);
+      catchError(err, next);
     });
 };
 
@@ -164,5 +164,5 @@ exports.deletePost = (req, res, next) => {
         message: "Deleted post",
       });
     })
-    .catch((err) => catchError(err));
+    .catch((err) => catchError(err, next));
 };
