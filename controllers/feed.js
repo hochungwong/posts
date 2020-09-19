@@ -3,6 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const Post = require("../models/post");
+const User = require("../models/user");
 
 const ERROR_STATUS_CODE = 422;
 const SEVER_ERROR_CODE = 500;
@@ -83,21 +84,32 @@ exports.createPost = (req, res, next) => {
   const title = req.body.title;
   const imageUrl = req.file.path;
   const content = req.body.content;
+  let creator;
   // Create post in db
   const post = new Post({
     title,
     content,
     imageUrl,
-    creator: {
-      name: "Carson",
-    },
+    creator: req.userId,
   });
   post
     .save()
     .then((result) => {
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      creator = user;
+      user.posts.push(post);
+      return user.save();
+    })
+    .then((_) => {
       res.status(201).json({
         message: "Post created successfully",
-        post: result,
+        post,
+        creator: {
+          _id: creator._id,
+          name: creator.name,
+        },
       });
     })
     .catch((err) => {
@@ -125,6 +137,9 @@ exports.updatePost = (req, res, next) => {
     .then((post) => {
       if (!post) {
         throwError("Could not find post", 404);
+      }
+      if (post.creator.toString() !== req.userId) {
+        throwError("No authorised", 403);
       }
       if (imageUrl !== post.imageUrl) {
         // changed, new file,
@@ -154,9 +169,19 @@ exports.deletePost = (req, res, next) => {
       if (!post) {
         throwError("Could not find post", 404);
       }
+      if (post.creator.toString() !== req.userId) {
+        throwError("No authorised", 403);
+      }
       // Check logged in user
       clearImage(post.imageUrl);
       return Post.findByIdAndRemove(postId);
+    })
+    .then((result) => {
+      return User.findById(req.userId);
+    })
+    .then((user) => {
+      user.posts.pull(postId);
+      return user.save();
     })
     .then((result) => {
       console.log("post delete", result);
