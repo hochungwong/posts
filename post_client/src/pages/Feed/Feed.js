@@ -1,4 +1,5 @@
 import React, { Component, Fragment } from "react";
+import openSocket from "socket.io-client";
 
 import Post from "../../components/Feed/Post/Post";
 import Button from "../../components/Button/Button";
@@ -33,10 +34,11 @@ class Feed extends Component {
       }
       const resData = await res.json();
       this.setState({ status: resData.status });
-      this.loadPosts();
     } catch (err) {
       this.catchError(err);
     }
+    this.loadPosts();
+    openSocket("http://localhost:8080");
   }
 
   loadPosts = async (direction) => {

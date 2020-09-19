@@ -58,5 +58,13 @@ app.use((error, req, res, next) => {
   });
 });
 
-connectToDB();
-app.listen(8080);
+connectToDB()
+  .then((_) => {
+    const server = app.listen(8080);
+    const io = require("socket.io")(server);
+    // execute on every new client connection
+    io.on("connection", (socket) => {
+      console.log("Socket Client Connected");
+    });
+  })
+  .catch((err) => console.log(err));
