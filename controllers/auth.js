@@ -35,10 +35,10 @@ const checkValidationResult = ({ req, msg, statusCode }) => {
 
 exports.signup = async (req, res, next) => {
   const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    throwErrorWithErrorsArray("Validation failed", errors.array(), 422);
-  }
   try {
+    if (!errors.isEmpty()) {
+      throwErrorWithErrorsArray(errors.array()[0].msg, errors.array(), 422);
+    }
     const { email, name, password } = req.body;
     const hashedPwd = await bcrypt.hash(password, 12);
     const user = new User({
@@ -53,18 +53,20 @@ exports.signup = async (req, res, next) => {
       userId: _id,
     });
   } catch (err) {
-    (err) => catchError(err, next);
+    catchError(err, next);
   }
 };
 
 exports.login = async (req, res, next) => {
   const { email, password } = req.body;
+  let loadedUser;
   try {
-    const loadedUser = await User.findOne({ email });
-    if (!loadedUser) {
+    const user = await User.findOne({ email });
+    if (!user) {
       throwError("A user with this email could not be found", 401);
     }
-    const match = bcrypt.compare(password, loadedUser.password);
+    loadedUser = user;
+    const match = bcrypt.compare(password, user.password);
     if (!match) {
       throwError("Wrong password", 401);
     }
@@ -103,12 +105,12 @@ exports.getUserStatus = async (req, res, next) => {
 
 exports.updateUserStatus = async (req, res, next) => {
   const newStatus = req.body.status;
-  checkValidationResult({
-    req,
-    msg: "Entered data is incorrect",
-    statusCode: 422,
-  });
   try {
+    checkValidationResult({
+      req,
+      msg: "Entered data is incorrect",
+      statusCode: 422,
+    });
     const user = await User.findById(req.userId);
     if (!user) throwError("User not found", 404);
     user.status = newStatus;

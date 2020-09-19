@@ -5,7 +5,6 @@ const authController = require("../controllers/auth");
 const isAuth = require("../middleware/is-auth");
 
 const { body } = require("express-validator");
-const { route } = require("./feed");
 
 router.put(
   "/signup",
@@ -13,14 +12,13 @@ router.put(
     body("email")
       .isEmail()
       .withMessage("Please enter a valid email")
-      .custom((value, { req }) => {
-        return User.findOne({
+      .custom(async (value) => {
+        const userDoc = await User.findOne({
           email: value,
-        }).then((userDoc) => {
-          if (userDoc) {
-            return Promise.reject("Email address already exists!");
-          }
         });
+        if (userDoc) {
+          return Promise.reject("Email address already exists!");
+        }
       })
       .normalizeEmail(),
     body("password").trim().isLength({
