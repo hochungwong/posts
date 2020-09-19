@@ -36,43 +36,41 @@ const clearImage = (filePath) => {
   fs.unlink(filePath, (err) => err && console.log("err", err));
 };
 
-exports.getPosts = (req, res, next) => {
+exports.getPosts = async (req, res, next) => {
   const currentPage = req.query.page || 1;
-  let totalItems;
-  Post.find()
-    .countDocuments()
-    .then((count) => {
-      totalItems = count;
-      return Post.find()
-        .skip((currentPage - 1) * PER_PAGE_LIMIT) // if on page 1, skip no item, if on page 2, skip first 2 items ...
-        .limit(PER_PAGE_LIMIT);
-    })
-    .then((posts) => {
-      res.status(200).json({
-        message: "All posts fetched",
-        posts,
-        totalItems,
-      });
-    })
-    .catch((err) => catchError(err, next));
+  try {
+    const totalItems = await Post.find().countDocuments();
+    const posts = await Post.find()
+      .populate("creator")
+      .skip((currentPage - 1) * PER_PAGE_LIMIT) // if on page 1, skip no item, if on page 2, skip first 2 items ...
+      .limit(PER_PAGE_LIMIT);
+    res.status(200).json({
+      message: "All posts fetched",
+      posts,
+      totalItems,
+    });
+  } catch (err) {
+    catchError(err);
+  }
 };
 
-exports.getPost = (req, res, next) => {
+exports.getPost = async (req, res, next) => {
   const postId = req.params.postId;
-  Post.findById(postId)
-    .then((post) => {
-      if (!post) {
-        throwError("Could not find post", 404);
-      }
-      res.status(200).json({
-        message: "Post fetched",
-        post,
-      });
-    })
-    .catch((err) => catchError(err, next));
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      throwError("Could not find post", 404);
+    }
+    res.status(200).json({
+      message: "Post fetched",
+      post,
+    });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
-exports.createPost = (req, res, next) => {
+exports.createPost = async (req, res, next) => {
   checkValidationResult({
     req,
     msg: "Validation failed, entered data is incorrect",
@@ -92,32 +90,26 @@ exports.createPost = (req, res, next) => {
     imageUrl,
     creator: req.userId,
   });
-  post
-    .save()
-    .then((result) => {
-      return User.findById(req.userId);
-    })
-    .then((user) => {
-      creator = user;
-      user.posts.push(post);
-      return user.save();
-    })
-    .then((_) => {
-      res.status(201).json({
-        message: "Post created successfully",
-        post,
-        creator: {
-          _id: creator._id,
-          name: creator.name,
-        },
-      });
-    })
-    .catch((err) => {
-      catchError(err, next);
+  try {
+    await post.save();
+    const user = await User.findById(req.userId); // get the creator id
+    creator = user;
+    user.posts.push(post);
+    await user.save(); // save posts to user table
+    res.status(201).json({
+      message: "Post created successfully",
+      post,
+      creator: {
+        _id: creator._id,
+        name: creator.name,
+      },
     });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
-exports.updatePost = (req, res, next) => {
+exports.updatePost = async (req, res, next) => {
   const { postId } = req.params;
   const { title, content } = req.body;
   checkValidationResult({
@@ -133,61 +125,53 @@ exports.updatePost = (req, res, next) => {
   if (!imageUrl) {
     throwError("No file picked", ERROR_STATUS_CODE);
   }
-  Post.findById(postId)
-    .then((post) => {
-      if (!post) {
-        throwError("Could not find post", 404);
-      }
-      if (post.creator.toString() !== req.userId) {
-        throwError("No authorised", 403);
-      }
-      if (imageUrl !== post.imageUrl) {
-        // changed, new file,
-        clearImage(post.imageUrl);
-      }
-      // update post
-      post.title = title;
-      post.imageUrl = imageUrl;
-      post.content = content;
-      return post.save();
-    })
-    .then((updatedPost) => {
-      res.status(200).json({
-        message: "Post updated",
-        post: updatedPost,
-      });
-    })
-    .catch((err) => {
-      catchError(err, next);
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      throwError("Could not find post", 404);
+    }
+    if (post.creator.toString() !== req.userId) {
+      throwError("No authorised", 403);
+    }
+    if (imageUrl !== post.imageUrl) {
+      // changed, new file,
+      clearImage(post.imageUrl);
+    }
+    // update post
+    post.title = title;
+    post.imageUrl = imageUrl;
+    post.content = content;
+    const updatedPost = await post.save();
+    res.status(200).json({
+      message: "Post updated",
+      post: updatedPost,
     });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
-exports.deletePost = (req, res, next) => {
+exports.deletePost = async (req, res, next) => {
   const { postId } = req.params;
-  Post.findById(postId)
-    .then((post) => {
-      if (!post) {
-        throwError("Could not find post", 404);
-      }
-      if (post.creator.toString() !== req.userId) {
-        throwError("No authorised", 403);
-      }
-      // Check logged in user
-      clearImage(post.imageUrl);
-      return Post.findByIdAndRemove(postId);
-    })
-    .then((result) => {
-      return User.findById(req.userId);
-    })
-    .then((user) => {
-      user.posts.pull(postId);
-      return user.save();
-    })
-    .then((result) => {
-      console.log("post delete", result);
-      res.status(200).json({
-        message: "Deleted post",
-      });
-    })
-    .catch((err) => catchError(err, next));
+  try {
+    const post = await Post.findById(postId);
+    if (!post) {
+      throwError("Could not find post", 404);
+    }
+    if (post.creator.toString() !== req.userId) {
+      throwError("No authorised", 403);
+    }
+    // Check logged in user
+    clearImage(post.imageUrl);
+    await Post.findByIdAndRemove(postId);
+    const user = await User.findById(req.userId);
+    user.posts.pull(postId);
+    await user.save();
+    console.log("post delete");
+    res.status(200).json({
+      message: "Deleted post",
+    });
+  } catch (err) {
+    catchError(err, next);
+  }
 };

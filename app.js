@@ -58,4 +58,5 @@ app.use((error, req, res, next) => {
   });
 });
 
-connectToDB().then(() => app.listen(8080));
+connectToDB();
+app.listen(8080);

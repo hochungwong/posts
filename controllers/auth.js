@@ -33,90 +33,90 @@ const checkValidationResult = ({ req, msg, statusCode }) => {
   }
 };
 
-exports.signup = (req, res, next) => {
+exports.signup = async (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     throwErrorWithErrorsArray("Validation failed", errors.array(), 422);
   }
-  const { email, name, password } = req.body;
-  bcrypt
-    .hash(password, 12)
-    .then((hashedPwd) => {
-      const user = new User({
-        email,
-        name,
-        password: hashedPwd,
-      });
-      return user.save();
-    })
-    .then((userResult) => {
-      const { _id } = userResult;
-      res.status(201).json({
-        message: "Signed up successfully",
-        userId: _id,
-      });
-    })
-    .catch((err) => catchError(err, next));
+  try {
+    const { email, name, password } = req.body;
+    const hashedPwd = await bcrypt.hash(password, 12);
+    const user = new User({
+      email,
+      name,
+      password: hashedPwd,
+    });
+    const userDoc = await user.save();
+    const { _id } = userDoc;
+    res.status(201).json({
+      message: "Signed up successfully",
+      userId: _id,
+    });
+  } catch (err) {
+    (err) => catchError(err, next);
+  }
 };
 
-exports.login = (req, res, next) => {
+exports.login = async (req, res, next) => {
   const { email, password } = req.body;
-  let loadedUser;
-  User.findOne({ email })
-    .then((user) => {
-      if (!user) {
-        throwError("A user with this email could not be found", 401);
+  try {
+    const loadedUser = await User.findOne({ email });
+    if (!loadedUser) {
+      throwError("A user with this email could not be found", 401);
+    }
+    const match = bcrypt.compare(password, loadedUser.password);
+    if (!match) {
+      throwError("Wrong password", 401);
+    }
+    const tokenPayload = {
+      email: loadedUser.email,
+      userId: loadedUser._id.toString(),
+    };
+    const tokenSecret = config.get("jwtSecret");
+    jwt.sign(
+      tokenPayload,
+      tokenSecret,
+      {
+        expiresIn: 360000,
+      },
+      (err, token) => {
+        if (err) throw error;
+        res.status(200).json({ token, userId: loadedUser._id.toString() });
       }
-      loadedUser = user;
-      return bcrypt.compare(password, user.password);
-    })
-    .then((match) => {
-      if (!match) {
-        throwError("Wrong password", 401);
-      }
-      const tokenPayload = {
-        email: loadedUser.email,
-        userId: loadedUser._id.toString(),
-      };
-      const tokenSecret = config.get("jwtSecret");
-      jwt.sign(
-        tokenPayload,
-        tokenSecret,
-        {
-          expiresIn: 360000,
-        },
-        (err, token) => {
-          if (err) throw error;
-          res.status(200).json({ token, userId: loadedUser._id.toString() });
-        }
-      );
-    })
-    .catch((err) => catchError(err, next));
+    );
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
-exports.getUserStatus = (req, res, next) => {
-  User.findById(req.userId)
-    .then((user) => {
-      if (!user) throwError("User not found", 404);
-      res.status(200).json({
-        status: user.status,
-      });
-    })
-    .catch((err) => catchError(err));
+exports.getUserStatus = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) throwError("User not found", 404);
+    res.status(200).json({
+      status: user.status,
+    });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
-exports.updateUserStatus = (req, res, next) => {
+exports.updateUserStatus = async (req, res, next) => {
   const newStatus = req.body.status;
-  User.findById(req.userId)
-    .then((user) => {
-      if (!user) throwError("User not found", 404);
-      user.status = newStatus;
-      return user.save();
-    })
-    .then((_) => {
-      res.status(200).json({
-        message: "Status updated",
-      });
-    })
-    .catch((err) => catchError(err));
+  checkValidationResult({
+    req,
+    msg: "Entered data is incorrect",
+    statusCode: 422,
+  });
+  try {
+    const user = await User.findById(req.userId);
+    if (!user) throwError("User not found", 404);
+    user.status = newStatus;
+    await user.save();
+    res.status(200).json({
+      message: "Status updated",
+    });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
