@@ -38,8 +38,50 @@ class Feed extends Component {
       this.catchError(err);
     }
     this.loadPosts();
-    openSocket("http://localhost:8080");
+
+    const socket = openSocket("http://localhost:8080");
+    socket.on("posts", (data) => {
+      switch (data.action) {
+        case "create":
+          this.addPost(data.post);
+          break;
+        case "update":
+          this.updatePost(data.post);
+          break;
+        default:
+          break;
+      }
+    });
   }
+
+  addPost = (post) => {
+    this.setState((prevState) => {
+      const updatedPosts = [...prevState.posts];
+      if (prevState.postPage === 1) {
+        if (prevState.posts.length >= 2) {
+          updatedPosts.pop();
+        }
+      }
+      updatedPosts.unshift(post);
+      return {
+        posts: updatedPosts,
+        totalPosts: prevState.totalPosts + 1,
+      };
+    });
+  };
+
+  updatePost = (post) => {
+    this.setState((prevState) => {
+      const updatedPosts = [...prevState.posts];
+      const updatedPostIndex = updatedPosts.findIndex((p) => p._id === post.id);
+      if (updatedPostIndex > -1) {
+        updatedPosts[updatedPostIndex] = post;
+      }
+      return {
+        posts: updatedPosts,
+      };
+    });
+  };
 
   loadPosts = async (direction) => {
     if (direction) {
@@ -151,25 +193,8 @@ class Feed extends Component {
       }
       const resData = await res.json();
       console.log(resData);
-      const post = {
-        _id: resData.post._id,
-        title: resData.post.title,
-        content: resData.post.content,
-        creator: resData.post.creator,
-        createdAt: resData.post.createdAt,
-      };
-      this.setState((prevState) => {
-        let updatedPosts = [...prevState.posts];
-        if (prevState.editPost) {
-          const postIndex = prevState.posts.findIndex(
-            (p) => p._id === prevState.editPost._id
-          );
-          updatedPosts[postIndex] = post;
-        } else if (prevState.posts.length < 2) {
-          updatedPosts = prevState.posts.concat(post);
-        }
+      this.setState(() => {
         return {
-          posts: updatedPosts,
           isEditing: false,
           editPost: null,
           editLoading: false,
@@ -273,6 +298,7 @@ class Feed extends Component {
                   key={post._id}
                   id={post._id}
                   author={post.creator.name}
+                  authorId={post.creator._id}
                   date={new Date(post.createdAt).toLocaleDateString("en-US")}
                   title={post.title}
                   image={post.imageUrl}

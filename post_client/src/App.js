@@ -13,7 +13,10 @@ import LoginPage from "./pages/Auth/Login";
 import SignupPage from "./pages/Auth/Signup";
 import "./App.css";
 
+import AuthContext from "./context/auth/authContext";
+
 class App extends Component {
+  static contextType = AuthContext;
   state = {
     showBackdrop: false,
     showMobileNav: false,
@@ -24,7 +27,7 @@ class App extends Component {
     error: null,
   };
 
-  componentDidMount() {
+  async componentDidMount() {
     const token = localStorage.getItem("token");
     const expiryDate = localStorage.getItem("expiryDate");
     if (!token || !expiryDate) {
@@ -51,9 +54,11 @@ class App extends Component {
 
   logoutHandler = () => {
     this.setState({ isAuth: false, token: null });
-    localStorage.removeItem("token");
-    localStorage.removeItem("expiryDate");
-    localStorage.removeItem("userId");
+    // localStorage.removeItem("token");
+    // localStorage.removeItem("expiryDate");
+    // localStorage.removeItem("userId");
+    // localStorage.removeItem("userName");
+    this.context.logout();
   };
 
   loginHandler = async (event, authData) => {
@@ -79,7 +84,6 @@ class App extends Component {
         throw new Error("Could not authenticate you!");
       }
       const resData = await res.json();
-      console.log(resData);
       this.setState({
         isAuth: true,
         token: resData.token,
@@ -88,6 +92,7 @@ class App extends Component {
       });
       localStorage.setItem("token", resData.token);
       localStorage.setItem("userId", resData.userId);
+      localStorage.setItem("userName", resData.name);
       const remainingMilliseconds = 60 * 60 * 1000;
       const expiryDate = new Date(new Date().getTime() + remainingMilliseconds);
       localStorage.setItem("expiryDate", expiryDate.toISOString());
