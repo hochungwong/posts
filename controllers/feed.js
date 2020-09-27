@@ -32,6 +32,10 @@ const checkValidationResult = ({ req, msg, statusCode }) => {
   }
 };
 
+const emitEvent = (event, data) => {
+  io.getIO().emit(event, data);
+};
+
 // remove image from file each time if the user uploads a new image
 const clearImage = (filePath) => {
   filePath = path.join(__dirname, "..", filePath);
@@ -56,6 +60,7 @@ exports.getPosts = async (req, res, next) => {
     const totalItems = await Post.find().countDocuments();
     const posts = await Post.find()
       .populate("creator")
+      .sort({ createdAt: -1 })
       .skip((currentPage - 1) * PER_PAGE_LIMIT) // if on page 1, skip no item, if on page 2, skip first 2 items ...
       .limit(PER_PAGE_LIMIT);
     res.status(200).json({
@@ -195,7 +200,10 @@ exports.deletePost = async (req, res, next) => {
     const user = await User.findById(req.userId);
     user.posts.pull(postId);
     await user.save();
-    console.log("post delete");
+    emitEvent("posts", {
+      actions: "delete",
+      post: postId,
+    });
     res.status(200).json({
       message: "Deleted post",
     });

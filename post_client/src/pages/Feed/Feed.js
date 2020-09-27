@@ -48,6 +48,9 @@ class Feed extends Component {
         case "update":
           this.updatePost(data.post);
           break;
+        case "delete":
+          this.loadPosts();
+          break;
         default:
           break;
       }
@@ -229,10 +232,11 @@ class Feed extends Component {
       }
       const resData = await res.json();
       console.log(resData);
-      this.setState((prevState) => {
-        const updatedPosts = prevState.posts.filter((p) => p._id !== postId);
-        return { posts: updatedPosts, postsLoading: false };
-      });
+      this.loadPosts();
+      // this.setState((prevState) => {
+      //   const updatedPosts = prevState.posts.filter((p) => p._id !== postId);
+      //   return { posts: updatedPosts, postsLoading: false };
+      // });
     } catch (err) {
       console.log(err);
       this.setState({ postsLoading: false });

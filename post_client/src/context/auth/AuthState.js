@@ -12,19 +12,21 @@ const AuthState = (props) => {
   // load user
   const loadUser = async () => {
     const token = localStorage.getItem("token");
-    try {
-      const res = await fetch("http://localhost:8080/feed/getUser", {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const resData = await res.json();
-      const { user } = resData;
-      dispatch({ type: USER_LOADED, payload: user });
-    } catch (err) {
-      dispatch({ type: AUTH_ERROR });
+    if (token) {
+      try {
+        const res = await fetch("http://localhost:8080/feed/getUser", {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const resData = await res.json();
+        const { user } = resData;
+        dispatch({ type: USER_LOADED, payload: user });
+      } catch (err) {
+        dispatch({ type: AUTH_ERROR });
+      }
     }
   };
 
