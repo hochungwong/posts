@@ -83,7 +83,9 @@ exports.login = async (req, res, next) => {
       },
       (err, token) => {
         if (err) throw error;
-        res.status(200).json({ token, userId: loadedUser._id.toString() });
+        res
+          .status(200)
+          .json({ token, userId: loadedUser._id.toString(), name: user.name });
       }
     );
   } catch (err) {

@@ -5,6 +5,8 @@ const { body } = require("express-validator");
 const feedController = require("../controllers/feed");
 const isAuth = require("../middleware/is-auth");
 
+router.get("/getUser", isAuth, feedController.getUser);
+
 // GET /feed/posts
 router.get("/posts", isAuth, feedController.getPosts);
 

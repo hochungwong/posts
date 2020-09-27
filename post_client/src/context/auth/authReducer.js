@@ -16,6 +16,11 @@ export default (state, action) => {
         user: null,
         error: action.payload,
       };
+    case AUTH_ERROR:
+      return {
+        ...state,
+        error: action.payload,
+      };
     default:
       return state;
   }

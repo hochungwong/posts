@@ -1,9 +1,11 @@
 const { validationResult } = require("express-validator");
 const fs = require("fs");
 const path = require("path");
+const io = require("../socket");
 
 const Post = require("../models/post");
 const User = require("../models/user");
+const { create } = require("../models/post");
 
 const ERROR_STATUS_CODE = 422;
 const SEVER_ERROR_CODE = 500;
@@ -34,6 +36,18 @@ const checkValidationResult = ({ req, msg, statusCode }) => {
 const clearImage = (filePath) => {
   filePath = path.join(__dirname, "..", filePath);
   fs.unlink(filePath, (err) => err && console.log("err", err));
+};
+
+exports.getUser = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.userId);
+    res.status(200).json({
+      message: "Get user success",
+      user,
+    });
+  } catch (err) {
+    catchError(err, next);
+  }
 };
 
 exports.getPosts = async (req, res, next) => {
@@ -82,7 +96,6 @@ exports.createPost = async (req, res, next) => {
   const title = req.body.title;
   const imageUrl = req.file.path;
   const content = req.body.content;
-  let creator;
   // Create post in db
   const post = new Post({
     title,
@@ -93,15 +106,24 @@ exports.createPost = async (req, res, next) => {
   try {
     await post.save();
     const user = await User.findById(req.userId); // get the creator id
-    creator = user;
     user.posts.push(post);
     await user.save(); // save posts to user table
+    io.getIO().emit("posts", {
+      action: "create",
+      post: {
+        ...post._doc,
+        creator: {
+          _id: req.userId,
+          name: user.name,
+        },
+      },
+    });
     res.status(201).json({
       message: "Post created successfully",
       post,
       creator: {
-        _id: creator._id,
-        name: creator.name,
+        _id: user._id,
+        name: user.name,
       },
     });
   } catch (err) {
@@ -126,11 +148,13 @@ exports.updatePost = async (req, res, next) => {
     throwError("No file picked", ERROR_STATUS_CODE);
   }
   try {
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate("creator"); // with the full user data;
     if (!post) {
       throwError("Could not find post", 404);
     }
-    if (post.creator.toString() !== req.userId) {
+    console.log("-----1", post.creator);
+    console.log("-----2", req.userId);
+    if (post.creator._id.toString() !== req.userId) {
       throwError("No authorised", 403);
     }
     if (imageUrl !== post.imageUrl) {
@@ -142,6 +166,10 @@ exports.updatePost = async (req, res, next) => {
     post.imageUrl = imageUrl;
     post.content = content;
     const updatedPost = await post.save();
+    io.getIO().emit("posts", {
+      action: "update",
+      post: updatedPost,
+    });
     res.status(200).json({
       message: "Post updated",
       post: updatedPost,

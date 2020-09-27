@@ -61,7 +61,7 @@ app.use((error, req, res, next) => {
 connectToDB()
   .then((_) => {
     const server = app.listen(8080);
-    const io = require("socket.io")(server);
+    const io = require("./socket").init(server);
     // execute on every new client connection
     io.on("connection", (socket) => {
       console.log("Socket Client Connected");
