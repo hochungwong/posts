@@ -9,17 +9,24 @@ const throwError = (msg, errorStatusCode) => {
 
 module.exports = (req, res, next) => {
   const authHeader = req.get("Authorization");
-  if (!authHeader) throwError("Not Authenticated", 401);
+  if (!authHeader) {
+    req.isAuth = false;
+    return next();
+  }
   const token = authHeader.split(" ")[1];
   let decodedToken;
   try {
     const tokenSecret = config.get("jwtSecret");
     decodedToken = jwt.verify(token, tokenSecret);
   } catch (err) {
-    err.statusCode = 500;
-    throw err;
+    req.isAuth = false;
+    return next();
   }
-  if (!decodedToken) throwError("Not Authenticated", 401);
+  if (!decodedToken) {
+    req.isAuth = false;
+    return next();
+  }
   req.userId = decodedToken.userId;
+  req.isAuth = true;
   next();
 };
