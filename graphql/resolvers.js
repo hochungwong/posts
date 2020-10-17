@@ -6,6 +6,8 @@ const config = require("config");
 const User = require("../models/user");
 const Post = require("../models/post");
 
+const POSTS_LIMIT = 2;
+
 const validatePost = (data, errorMessage) => {
   if (
     validator.isEmpty(data) ||
@@ -137,13 +139,18 @@ module.exports = {
       updatedAt: createdPost.updatedAt.toISOString(),
     };
   },
-  posts: async function (_, req) {
+  posts: async function ({ page }, req) {
     if (!req.isAuth) throwErrorBySingleError("Not Authenticated", 401);
+    if (!page) {
+      page = 1;
+    }
     const totalPosts = await Post.find().countDocuments();
     const posts = await Post.find()
       .sort({
         createdAt: -1,
       })
+      .skip((page - 1) * POSTS_LIMIT)
+      .limit(POSTS_LIMIT)
       .populate("creator");
     return {
       posts: posts.map((p) => {
@@ -155,6 +162,16 @@ module.exports = {
         };
       }),
       totalPosts,
+    };
+  },
+  post: async function ({ id }, req) {
+    if (!req.isAuth) throwErrorBySingleError("Not Authenticated", 401);
+    const post = await Post.findById(id).populate("creator");
+    return {
+      ...post._doc,
+      id: post._id.toString(),
+      createdAt: post.createdAt.toISOString(),
+      updatedAt: post.updatedAt.toISOString(),
     };
   },
 };

@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
+const fs = require("fs");
 const multer = require("multer");
 const { graphqlHTTP } = require("express-graphql");
 
@@ -51,6 +52,22 @@ app.use((req, res, next) => {
 
 app.use(auth);
 
+app.put("/post-image", (req, res, next) => {
+  if (!req.isAuth) {
+    throw new Error("Not authenticated");
+  }
+  if (!req.file) {
+    return res.status(200).json({ message: "No file provided" });
+  }
+  if (req.body.oldPath) {
+    clearImage(req.body.oldPath);
+  }
+  return res.status(201).json({
+    message: "File Stored",
+    filePath: req.file.path,
+  });
+});
+
 app.use(
   "/graphql",
   graphqlHTTP({
@@ -88,3 +105,9 @@ connectToDB()
     app.listen(8080);
   })
   .catch((err) => console.log(err));
+
+// remove image from file each time if the user uploads a new image
+const clearImage = (filePath) => {
+  filePath = path.join(__dirname, "..", filePath);
+  fs.unlink(filePath, (err) => err && console.log("err", err));
+};
