@@ -59,6 +59,7 @@ class Feed extends Component {
               _id
               title
               content
+              imageUrl
               creator {
                 name
               }
@@ -143,22 +144,34 @@ class Feed extends Component {
   };
 
   finishEditHandler = async (postData) => {
+    const { editPost } = this.state;
     this.setState({
       editLoading: true,
     });
     // built in data type for browser
     const formData = new FormData();
-    formData.append("title", postData.title);
-    formData.append("content", postData.content);
     formData.append("image", postData.image);
+    if (editPost) {
+      formData.append("oldPath", editPost.imagePath);
+    }
+    try {
+      const fileRes = await fetch("http://localhost:8080/post-image", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${this.props.token}`,
+        },
+        body: formData,
+      });
+      const fileResData = await fileRes.json();
+      const { filePath: imageUrl } = fileResData;
 
-    let graphqlQuery = {
-      query: `
+      let graphqlQuery = {
+        query: `
         mutation {
           createPost(postInput: {
             title: "${postData.title}",
             content: "${postData.content}",
-            imageUrl: "some url"
+            imageUrl: "${imageUrl}"
           }) {
             _id
             title
@@ -171,71 +184,75 @@ class Feed extends Component {
           }
         }
       `,
-    };
-
-    try {
-      const res = await fetch("http://localhost:8080/graphql", {
-        method: "POST",
-        // header is set automatically by formdata
-        body: JSON.stringify(graphqlQuery),
-        headers: {
-          Authorization: `Bearer ${this.props.token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      const resData = await res.json();
-      console.log(resData);
-      if (resData.errors && resData.errors[0].status === 422) {
-        throw new Error(
-          "validation failed. Make sure the email address isn't used yet"
-        );
-      }
-      if (resData.errors) {
-        throw new Error("User login failed!");
-      }
-      const {
-        _id,
-        title,
-        imageUrl,
-        content,
-        creator,
-        createdAt,
-      } = resData.data.createPost;
-      const post = {
-        _id,
-        title,
-        content,
-        creator,
-        createdAt,
       };
 
-      this.setState((prevState) => {
-        console.log(prevState);
-        let updatedPosts = [...prevState.posts];
-        if (prevState.editPost) {
-          const postIndex = prevState.posts.findIndex(
-            (p) => p._id === prevState.editPost._id
+      try {
+        const res = await fetch("http://localhost:8080/graphql", {
+          method: "POST",
+          // header is set automatically by formdata
+          body: JSON.stringify(graphqlQuery),
+          headers: {
+            Authorization: `Bearer ${this.props.token}`,
+            "Content-Type": "application/json",
+          },
+        });
+        const resData = await res.json();
+        console.log(resData);
+        if (resData.errors && resData.errors[0].status === 422) {
+          throw new Error(
+            "validation failed. Make sure the email address isn't used yet"
           );
-          updatedPosts[postIndex] = post;
-        } else {
-          updatedPosts.pop();
-          updatedPosts.unshift(post);
         }
-        return {
-          posts: updatedPosts,
+        if (resData.errors) {
+          throw new Error("User login failed!");
+        }
+        const {
+          _id,
+          title,
+          imageUrl: imagePath,
+          content,
+          creator,
+          createdAt,
+        } = resData.data.createPost;
+        const post = {
+          _id,
+          title,
+          content,
+          creator,
+          createdAt,
+          imagePath,
+        };
+
+        this.setState((prevState) => {
+          console.log(prevState);
+          let updatedPosts = [...prevState.posts];
+          if (prevState.editPost) {
+            const postIndex = prevState.posts.findIndex(
+              (p) => p._id === prevState.editPost._id
+            );
+            updatedPosts[postIndex] = post;
+          } else {
+            updatedPosts.pop();
+            updatedPosts.unshift(post);
+          }
+          return {
+            posts: updatedPosts,
+            isEditing: false,
+            editPost: null,
+            editLoading: false,
+          };
+        });
+      } catch (err) {
+        console.log(err);
+        this.setState({
           isEditing: false,
           editPost: null,
           editLoading: false,
-        };
-      });
+          error: err,
+        });
+      }
     } catch (err) {
-      console.log(err);
-      this.setState({
-        isEditing: false,
-        editPost: null,
-        editLoading: false,
-        error: err,
-      });
+      console.error(err);
     }
   };
 
