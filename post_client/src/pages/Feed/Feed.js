@@ -8,7 +8,6 @@ import Paginator from "../../components/Paginator/Paginator";
 import Loader from "../../components/Loader/Loader";
 import ErrorHandler from "../../components/ErrorHandler/ErrorHandler";
 import "./Feed.css";
-
 class Feed extends Component {
   state = {
     isEditing: false,
@@ -55,7 +54,7 @@ class Feed extends Component {
     const graphqlQuery = {
       query: `
         {
-          posts {
+          posts(page: ${page}) {
             posts {
               _id
               title
@@ -219,6 +218,7 @@ class Feed extends Component {
           );
           updatedPosts[postIndex] = post;
         } else {
+          updatedPosts.pop();
           updatedPosts.unshift(post);
         }
         return {
