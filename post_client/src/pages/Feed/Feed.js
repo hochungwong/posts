@@ -186,6 +186,29 @@ class Feed extends Component {
       `,
       };
 
+      if (this.state.editPost) {
+        graphqlQuery = {
+          query: `
+          mutation {
+            updatePost(id: "${this.state.editPost._id}" ,postInput: {
+              title: "${postData.title}",
+              content: "${postData.content}",
+              imageUrl: "${imageUrl}"
+            }) {
+              _id
+              title
+              content
+              imageUrl
+              creator {
+                name
+              }
+              createdAt
+            }
+          }
+        `,
+        };
+      }
+
       try {
         const res = await fetch("http://localhost:8080/graphql", {
           method: "POST",
@@ -206,6 +229,10 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error("User login failed!");
         }
+        let resDateField = "createPost";
+        if (this.state.editPost) {
+          resDateField = "updatePost";
+        }
         const {
           _id,
           title,
@@ -213,7 +240,7 @@ class Feed extends Component {
           content,
           creator,
           createdAt,
-        } = resData.data.createPost;
+        } = resData.data[resDateField];
         const post = {
           _id,
           title,
