@@ -1,9 +1,9 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const path = require("path");
-const fs = require("fs");
 const multer = require("multer");
 const { graphqlHTTP } = require("express-graphql");
+const { clearImage } = require("./util/file");
 
 const graphqlSchema = require("./graphql/schema");
 const graphqlResolvers = require("./graphql/resolvers");
@@ -105,9 +105,3 @@ connectToDB()
     app.listen(8080);
   })
   .catch((err) => console.log(err));
-
-// remove image from file each time if the user uploads a new image
-const clearImage = (filePath) => {
-  filePath = path.join(__dirname, "..", filePath);
-  fs.unlink(filePath, (err) => err && console.log("err", err));
-};

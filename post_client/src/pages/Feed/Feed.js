@@ -62,6 +62,7 @@ class Feed extends Component {
               imageUrl
               creator {
                 name
+                _id
               }
               createdAt
             }
@@ -117,8 +118,6 @@ class Feed extends Component {
       if (res.status !== 200 && res.status !== 201) {
         throw new Error("Can't update status!");
       }
-      const resData = await res.json();
-      console.log(resData);
     } catch (err) {
       this.catchError(err);
     }
@@ -179,6 +178,7 @@ class Feed extends Component {
             imageUrl
             creator {
               name
+              _id
             }
             createdAt
           }
@@ -220,7 +220,6 @@ class Feed extends Component {
           },
         });
         const resData = await res.json();
-        console.log(resData);
         if (resData.errors && resData.errors[0].status === 422) {
           throw new Error(
             "validation failed. Make sure the email address isn't used yet"
@@ -251,7 +250,6 @@ class Feed extends Component {
         };
 
         this.setState((prevState) => {
-          console.log(prevState);
           let updatedPosts = [...prevState.posts];
           if (prevState.editPost) {
             const postIndex = prevState.posts.findIndex(
@@ -259,7 +257,11 @@ class Feed extends Component {
             );
             updatedPosts[postIndex] = post;
           } else {
-            updatedPosts.pop();
+            // fix: when adding a new post with only one post being loaded,
+            // we end up with one post on the starting page (instead of the expected two posts).
+            if (prevState.posts.length >= 2) {
+              updatedPosts.pop();
+            }
             updatedPosts.unshift(post);
           }
           return {
@@ -270,13 +272,13 @@ class Feed extends Component {
           };
         });
       } catch (err) {
-        console.log(err);
         this.setState({
           isEditing: false,
           editPost: null,
           editLoading: false,
           error: err,
         });
+        console.error(err);
       }
     } catch (err) {
       console.error(err);
@@ -289,26 +291,32 @@ class Feed extends Component {
 
   deletePostHandler = async (postId) => {
     this.setState({ postsLoading: true });
+    const graphqlQuery = {
+      query: `
+        mutation {
+          deletePost(id: "${postId}")
+        }
+      `,
+    };
     try {
-      const res = await fetch(`http://localhost:8080/feed/post/${postId}`, {
-        method: "DELETE",
+      const res = await fetch(`http://localhost:8080/graphql`, {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${this.props.token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(graphqlQuery),
       });
-      if (res.status !== 200 && res.status !== 201) {
-        throw new Error("Deleting a post failed!");
-      }
       const resData = await res.json();
-      console.log(resData);
+      if (resData.errors) throw new Error("Deleting the post failed");
       this.loadPosts();
       // this.setState((prevState) => {
       //   const updatedPosts = prevState.posts.filter((p) => p._id !== postId);
       //   return { posts: updatedPosts, postsLoading: false };
       // });
     } catch (err) {
-      console.log(err);
       this.setState({ postsLoading: false });
+      console.error(err);
     }
   };
 
@@ -366,20 +374,22 @@ class Feed extends Component {
               lastPage={Math.ceil(this.state.totalPosts / 2)}
               currentPage={this.state.postPage}
             >
-              {this.state.posts.map((post) => (
-                <Post
-                  key={post._id}
-                  id={post._id}
-                  author={post.creator.name}
-                  authorId={post.creator._id}
-                  date={new Date(post.createdAt).toLocaleDateString("en-US")}
-                  title={post.title}
-                  image={post.imageUrl}
-                  content={post.content}
-                  onStartEdit={this.startEditPostHandler.bind(this, post._id)}
-                  onDelete={this.deletePostHandler.bind(this, post._id)}
-                />
-              ))}
+              {this.state.posts.map((post) => {
+                return (
+                  <Post
+                    key={post._id}
+                    id={post._id}
+                    author={post.creator.name}
+                    authorId={post.creator._id}
+                    date={new Date(post.createdAt).toLocaleDateString("en-US")}
+                    title={post.title}
+                    image={post.imageUrl}
+                    content={post.content}
+                    onStartEdit={this.startEditPostHandler.bind(this, post._id)}
+                    onDelete={this.deletePostHandler.bind(this, post._id)}
+                  />
+                );
+              })}
             </Paginator>
           )}
         </section>
