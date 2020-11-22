@@ -21,17 +21,28 @@ class Feed extends Component {
   };
 
   async componentDidMount() {
+    const graphqlQuery = {
+      query: `
+        {
+          user {
+            status
+          }
+        }
+      `,
+    };
     try {
-      const res = await fetch("http://localhost:8080/auth/status", {
+      const res = await fetch("http://localhost:8080/graphql", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${this.props.token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify(graphqlQuery),
       });
-      if (res.status !== 200) {
-        throw new Error("Failed to fetch user status.");
-      }
       const resData = await res.json();
-      this.setState({ status: resData.status });
+      if (resData.errros) throw new Error("Fetching status failed");
+      const { status } = resData.data.user;
+      this.setState({ status });
     } catch (err) {
       this.catchError(err);
     }
@@ -104,20 +115,27 @@ class Feed extends Component {
   statusUpdateHandler = async (event) => {
     event.preventDefault();
     const { status } = this.state;
+    const graphqlQuery = {
+      query: `
+        mutation {
+          updateStatus(status: "${status}") {
+            status
+          }
+        }
+      `,
+    };
     try {
-      const res = await fetch("http://localhost:8080/auth/status", {
-        method: "PATCH",
+      const res = await fetch("http://localhost:8080/graphql", {
+        method: "POST",
         headers: {
           Authorization: `Bearer ${this.props.token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          status,
-        }),
+        body: JSON.stringify(graphqlQuery),
       });
-      if (res.status !== 200 && res.status !== 201) {
-        throw new Error("Can't update status!");
-      }
+      const resData = await res.json();
+      if (resData.errors) throw new Error("Update status failed");
+      console.log(resData);
     } catch (err) {
       this.catchError(err);
     }
@@ -285,7 +303,7 @@ class Feed extends Component {
     }
   };
 
-  statusInputChangeHandler = (input, value) => {
+  statusInputChangeHandler = (_, value) => {
     this.setState({ status: value });
   };
 

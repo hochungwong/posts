@@ -28,7 +28,7 @@ const MainNavigation = ({ onOpenMobileNav, isAuth, onLogout }) => {
       <div className="spacer" />
       <div className="main-nav__logo">
         <NavLink to="/">
-          <h1>{user ? user.name : "loading..."}</h1>
+          <h1>{user ? `${user.email}:${user.name}` : "loading..."}</h1>
         </NavLink>
       </div>
       <div className="spacer" />

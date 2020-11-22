@@ -12,17 +12,30 @@ const AuthState = (props) => {
   // load user
   const loadUser = async () => {
     const token = localStorage.getItem("token");
+    const graphqlQuery = {
+      query: `
+        {
+          user {
+            _id
+            name
+            email
+          }
+        }
+      `,
+    };
     if (token) {
       try {
-        const res = await fetch("http://localhost:8080/feed/getUser", {
-          method: "GET",
+        const res = await fetch("http://localhost:8080/graphql", {
+          method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          body: JSON.stringify(graphqlQuery),
         });
+
         const resData = await res.json();
-        const { user } = resData;
+        const { user } = resData.data;
         dispatch({ type: USER_LOADED, payload: user });
       } catch (err) {
         dispatch({ type: AUTH_ERROR });
